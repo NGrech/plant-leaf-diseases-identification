@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "plant-leaf-diseases-identification"
+version = "0.1.0"
+description = ""
+authors = ["Nigel Grech <nigelgrech.ng@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+jupyter = "^1.0.0"
+ipykernel = "^6.4.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
