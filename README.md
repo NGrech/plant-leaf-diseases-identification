@@ -1,0 +1,2 @@
+# plant-leaf-diseases-identification
+In this repo we tackle the problem of plant leaf disease identification based on the PlantVillage data set. This work is part of the AI for Data Science course in the Applied Data Science MSc @ Malmo University. Our aim it to hand build a number of algorithms which we will use to train classification models, and compare them to existing solutions provided by leading libraries.
