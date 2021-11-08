@@ -130,3 +130,6 @@ dmypy.json
 
 # Data 
 data/
+
+# Personal dev notebook 
+notebooks/my_dev_notebook.ipynb
