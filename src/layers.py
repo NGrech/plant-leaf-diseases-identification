@@ -1,7 +1,18 @@
 """Module for Layer classes for neural nets."""
 import numpy as np
 
-class LinearLayer():
+class Layer:
+    """Base class"""
+    def __init__(self) -> None:
+        pass
+
+    def forward(self):
+        pass
+    
+    def backward(self):
+        pass
+
+class LinearLayer(Layer):
     """Linear transformation layer of the type o = ixW + b,
     
     where I is the incoming vector, W is the layers weight matrix, b is bias vector and o is the dot product of the 
@@ -27,14 +38,14 @@ class LinearLayer():
         return self.output
 
 
-class Dropout():
+class Dropout(Layer):
     pass
 
-class InputLayer():
+class InputLayer(Layer):
     pass
 
-class ConvolutionLayer():
+class ConvolutionLayer(Layer):
     pass
 
-class PoolingLayer():
+class PoolingLayer(Layer):
     pass
