@@ -17,3 +17,12 @@ class CategoricalCrossEntropyLoss:
         # Taking the -ve log of the remaining confidence scores 
         negative_log = -np.log(corrected)
         return np.mean(negative_log)
+    
+    def backward(y_pred, y_true):
+        """Backpropagation  of the CCE Loss
+
+        Args:
+            y_pred (np_array) array of predictions.
+            y_true (np_array) array of correct labels.
+        """
+        return (-y_true/y_pred)/len(y_pred)
