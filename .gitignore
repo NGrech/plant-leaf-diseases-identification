@@ -131,4 +131,5 @@ dmypy.json
 # Data 
 data/
 
-
+# IDE
+.vscode/

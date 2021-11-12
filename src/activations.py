@@ -3,8 +3,19 @@ import numpy as np
 
 class ReLU:
     """Applies Rectified linear Unit function to vector."""
-    def forward(x):
+    def __init__(self) -> None:
+        # initializing attributes needed for backwards 
+        self.inputs = None
+        self.d_relu = None
+    
+    def forward(self, x):
+        # storing inputs needed for backwards 
+        self.inputs = x
         return np.maximum(x, 0)
+    
+    def backward(self, d_vals):
+        self.d_relu = d_vals.copy()
+        self.d_relu[self.inputs <= 0] = 0
 
 class Softmax:
     """Applies Softmax function to input matrix."""
