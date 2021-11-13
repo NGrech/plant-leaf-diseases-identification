@@ -1,26 +1,29 @@
 """Module for activators."""
 import numpy as np
+from base import Module
 
-class ReLU:
+class ReLU(Module):
     """Applies Rectified linear Unit function to vector."""
     def __init__(self) -> None:
         # initializing attributes needed for backwards 
-        self.inputs = None
+        super().__init__()
         self.d_relu = None
     
     def forward(self, x):
         # storing inputs needed for backwards 
         self.inputs = x
-        return np.maximum(x, 0)
+        self.outputs = np.maximum(x, 0)
+        return self.outputs
     
     def backward(self, d_vals):
         self.d_relu = d_vals.copy()
         self.d_relu[self.inputs <= 0] = 0
 
-class Softmax:
+class Softmax(Module):
     """Applies Softmax function to input matrix."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.confidence_scores = None
 
     def forward(self, x):
@@ -44,7 +47,7 @@ class Softmax:
             # get the gradient 
             self.d_soft[i] = np.dot(j_matrix, d_val)
     
-    def combo_backward(self, y_pred, y_true):
+    def backward(self, y_pred, y_true):
         """Does a the combined backward pass for CCE & Softmax as a single, faster step."""
         n = len(y_pred)
 
@@ -55,4 +58,3 @@ class Softmax:
         self.d_soft[range(n), y_true] -= 1
         self.d_soft = self.d_soft/n
         return self.d_soft
-
