@@ -1,4 +1,8 @@
 """Module for optimization functions"""
+from layers import LinearLayer
+from typing import List
+
+import numpy as np
 
 class SDG:
     """Stochastic Gradient Decent class used to update layer paramers
@@ -68,3 +72,71 @@ class SDG:
 
         # post update
         self.iterations += 1 
+
+class Adam:
+    """Adam Optimizer"""
+
+    IMPLEMENTED = [LinearLayer]
+
+    def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-7, beta_1=0.9, beta_2=0.999) -> None:
+        self.lr = learning_rate
+        self.clr = learning_rate # current learning rate
+        self.decay = decay
+        self.epsilon = epsilon
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.iterations = 0
+
+    def pre_update_step(self):
+        decay_rate = 1/(1 + self.decay * self.iterations)
+        self.clr = self.lr * decay_rate
+
+    def init_momentum(self, layers:List[LinearLayer]):
+        for layer in layers:
+            # Init momentum for weights
+            layer.momentums_w = np.zeros_like(layer.weights)
+            layer.cache_w = np.zeros_like(layer.weights)
+
+            # Init momentums for biases
+            layer.momentums_b = np.zeros_like(layer.bias)
+            layer.cache_b = np.zeros_like(layer.bias)
+            
+
+    def update(self, layers:List[LinearLayer]):
+        # pre update step
+        if self.decay:
+           self.pre_update_step()
+        
+        if self.iterations == 0:
+            self.init_momentum(layers)
+
+        # Update step
+        for layer in layers:     
+            ## Updating momentum 
+            layer.momentums_w = self.beta_1 * layer.momentums_w + (1 - self.beta_1) * layer.d_w
+            layer.momentums_b = self.beta_1 * layer.momentums_b + (1 - self.beta_1) * layer.d_b
+
+            ## Correcting momentum 
+            correction_bias_momentums = 1 - self.beta_1**(self.iterations +1)
+
+            corrected_weights = layer.momentums_w / correction_bias_momentums
+            corrected_bias    = layer.momentums_b / correction_bias_momentums
+
+            ## Updating cache
+            layer.cache_w = self.beta_2 * layer.cache_w + (1 - self.beta_2) * layer.d_w**2
+            layer.cache_b = self.beta_2 * layer.cache_b + (1 - self.beta_2) * layer.d_b**2
+
+            ## Correcting cache
+            correction_bias_cache = 1 - self.beta_2**(self.iterations +1)
+
+            corrected_cache_w = layer.cache_w / correction_bias_cache
+            corrected_cache_b = layer.cache_b / correction_bias_cache
+
+            ## Updating weights 
+            layer.weights += -self.clr * corrected_weights / (np.sqrt(corrected_cache_w) + self.epsilon)
+
+            ## Updating bias
+            layer.bias    += -self.clr * corrected_bias / (np.sqrt(corrected_cache_b) + self.epsilon)
+        
+        # Post update step
+        self.iterations += 1
