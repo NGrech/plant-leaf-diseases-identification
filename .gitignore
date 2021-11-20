@@ -130,6 +130,8 @@ dmypy.json
 
 # Data 
 data/
+notebooks/fashion_mnist_images/
 
 # IDE
 .vscode/
+{CV2_PACKAGE_FOLDER}/

@@ -1,7 +1,7 @@
 """Module for model creating, loading and saving"""
-
+import numpy as np
 from layers import Dropout
-from utils import accuracy
+from loss import Accuracy
 
 
 class Model:
@@ -12,22 +12,21 @@ class Model:
     Loss:       The loss class that should be used
 
     Attributes:
-        layers              (list):  List of all layers in the network in their activation sequence 
-        trainable_layers    (list):  List of trainable layers in the network
-        loss                ():      The loss class that should be used
-        optim               ():      The optimizer that should be used
-        current_loss        (float): Latest loss recorded 
-        current_accuracy    (float): Latest accuracy recorded
-        training_mode       (bool):  Boolean flag if the network is in training mode
+        layers              (list):    List of all layers in the network in their activation sequence 
+        trainable_layers    (list):    List of trainable layers in the network
+        loss                ():        The loss class that should be used
+        optim               ():        The optimizer that should be used
+        current_loss        (float):   Latest loss recorded 
+        training_mode       (bool):    Boolean flag if the network is in training mode
     """
 
     def __init__(self, optimizer, loss) -> None:
         self.layers = []
         self.trainable_layers = []
         self.loss = loss
+        self.accuracy = Accuracy
         self.optim = optimizer
         self.current_loss = 0
-        self.current_accuracy = 0
         self.training_mode = True
 
     def __repr__(self) -> str:
@@ -74,58 +73,110 @@ class Model:
         for i, l in reversed(list(enumerate(self.layers[:-1]))):
             l.backward(self.layers[i+1].grad)
         
-    def logger(self, epoch):
+    def step_logger(self, step, steps):
         """Prints current state of model"""
         print(
-            f"Epoch: {epoch}, accuracy{self.current_accuracy:.3f}, loss{self.current_loss:.3f}, learning rate {self.optim.clr:.3f} "
+            f"Step: {step}/{steps}, accuracy{self.accuracy.current_accuracy:.3f}, loss{self.current_loss:.3f}, learning rate {self.optim.clr:.3f} "
+        )
+
+    def epoch_logger(self, epoch, epochs):
+        """Prints current state of model"""
+        print(
+            f"Epoch: {epoch}/{epochs}, accuracy{self.accuracy.get_accumulated_accuracy():.3f}, loss{self.loss.get_accumulated_loss():.3f}, learning rate {self.optim.clr:.3f}"
         )
     
-    def validate(self, X_val, y_val):
+    def validate(self, X_val, y_val, batch_size, steps):
         """Handles the validation pass of the network"""
-        self.forward(X_val)
+        self.mode_eval()
+        self.reset()
 
-        loss = self.loss.forward(self.layers[-1].output, y_val)
-        acc  = accuracy(self.layers[-1].output, y_val)
+        for step in range(steps):
+            X_batch, y_batch = self.batch_data(step, batch_size, X_val, y_val)
+
+            self.forward(X_batch)
+
+            self.loss.forward(self.layers[-1].output, y_batch)
+            self.accuracy.forward(self.layers[-1].output, y_batch)
 
         print(
-            f"Validation : Loss: {loss:.3f}, Accuracy: {acc:.3f}"
+            f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
         )
 
     def mode_train(self):
         """Sets the model and all dropout layers to training mode."""
+        if not self.training_mode:
+            for l in self.layers:
+                if type(l) == Dropout:
+                    l.training_mode = True
         self.training_mode = True
-        for l in self.layers:
-            if type(l) == Dropout:
-                l.training_mode = True
     
     def mode_eval(self):
         """Sets the model and all dropout layers to evaluation mode."""
+        if self.training_mode:
+            for l in self.layers:
+                if type(l) == Dropout:
+                    l.training_mode = False
         self.training_mode = False
-        for l in self.layers:
-            if type(l) == Dropout:
-                l.training_mode = False
+        
+    def get_steps(self, X, size):
+        return np.ceil(len(X)/size)
+
+    def reset(self):
+        self.loss.reset()
+        self.accuracy.reset()
+
+    def batch_data(self, step, size, X, y):
+        if size == 1:
+            return X, y
+        else:
+            X_batch = X[step*size:(step+1)*size]
+            y_batch = y[step*size:(step+1)*size]
+        return X_batch, y_batch
     
-    def train(self, X, y, epochs=1, log=True, log_freq=100):
+    def train(self, X, y, epochs=1, batch_size=1, log=True, log_freq=100, validation=None):
         """Handles the trining loop."""
+
+        # Calculating # of steps for each epoch
+        steps = self.get_steps(X, batch_size)
+        if validation:
+            X_test, y_test = validation
+            val_steps = self.get_steps(X_test, batch_size)
+        
         for epoch in range(epochs + 1):
 
-            # Forward Pass
-            self.forward(X)
+            print(f'=== Epoch: {epoch+1} of {epochs} ===')
 
-            # Loss 
-            self.current_loss = self.get_loss(self.layers[-1].output, y)
+            self.reset()
+            self.training_mode()
 
-            # accuracy 
-            self.current_accuracy = accuracy(self.layers[-1].output, y) 
-            
-            # Backward Pass
-            self.backward(self.layers[-1].output, y)
+            for step in range(steps):
 
-            # Optimization 
-            self.optim.update(self.trainable_layers)
+                # Taking batch
+                X_batch, y_batch = self.batch_data(step, batch_size, X, y)
 
-            # Logging 
-            if log and not (epoch % log_freq):
-                self.logger(epoch)
+                # Forward Pass
+                self.forward(X_batch)
+
+                # Loss 
+                self.current_loss = self.get_loss(self.layers[-1].output, y_batch)
+
+                # accuracy 
+                self.current_accuracy = self.accuracy.forward(self.layers[-1].output, y_batch) 
+                
+                # Backward Pass
+                self.backward(self.layers[-1].output, y_batch)
+
+                # Optimization 
+                self.optim.update(self.trainable_layers)
+
+                # Logging 
+                if log:
+                    if (not (step % log_freq)) or (step == steps-1):
+                        self.step_logger(step, steps)
+
+            self.epoch_logger(epoch, epochs)
+
+            if validation:
+                self.validate(X_test, y_test, batch_size, val_steps)
 
     
