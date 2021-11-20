@@ -1,6 +1,8 @@
 """Module for Layer classes for neural nets."""
 from base import Module
 import numpy as np
+from scipy.signal import convolve2d
+import itertools as it
 
 class LinearLayer(Module):
     """Linear transformation layer of the type o = ixW + b,
@@ -172,9 +174,99 @@ class Dropout(Module):
         """
         self.grad = grads * self.mask
     
+class ConvolutionLayer(Module):
+    
+    """
+    Convolutional transformation layer
+    
+    Args:
+        channels (int):     number of input channels 
+        kernel_size (int):  size of convolution kernel
+        
+    Attributes:
+        kernels (int):      number of kernel in kernel 
+        kernel (np_array):  numpy array of a number of 2d kernels
+        bias (np_array):    numpy array of the bias for each image in the batch
+        inputs (np_array):  numpy array of latest batch of inputs with the dims (batch_size, channels, height, width)
+        outputs (np_array): numpy array of latest batch of outputs
+        batch_size (int):   number of images in latest inputs
 
-class ConvolutionLayer():
-    pass
+        dinputs (np_array):     The current gradients with respect to the layer input 
+        dkernel (np_array):     The current gradients with respect to the kernel weights
+        dbiases (np_array):     The current gradients with respect to the biases
+    """
+
+    def __init__(self, channels, kernel_size):
+
+        self.channels = channels
+        self.kernel_size = kernel_size
+
+        self.kernels = 1
+
+        # Filter kernel definition - Low-pass
+        self.kernel = np.ones([self.kernels, kernel_size, kernel_size])
+
+    def forward(self, inputs):
+        
+        self.inputs = inputs
+        self.batch_size = self.inputs.shape[0]
+        self.bias = np.zeros([self.batch_size, self.channels])
+
+        self.outputs = self.__convolve2d()
+
+    def backward(self, dvalues):
+
+        """Backpropagation of the convolution
+
+        Args:
+            dvalues (np_array): array of derivatives from the previous layer/function.
+        """
+
+        self.dinputs = np.zeros_like(self.inputs)
+        self.dkernel = np.zeros_like(self.kernel)
+
+        r_im = range(self.batch_size)
+        r_ch = range(self.channels)
+
+         # Calculate the loss-gradient with repect to the kernel weights (dL/dk = dL/dO * dO/dX, dL/dO = dvalues)
+         # => dL/dk = convolution(local inputs, back-propagated derivatives)
+        for im, ch in it.product(r_im, r_ch):
+            c1 = self.inputs[im, ch, :, :]
+            c2 = dvalues[im, ch, :, :]
+            self.dkernel[0, :, :] = convolve2d(c1, c2, mode='valid')
+
+        # Calculate the loss-gradient with repect to the layer inputs (dL/dX = dL/dO * dO/dk, dL/dO = dvalues)
+        #  => dL/dX = full-convolution(back-propagated derivatives, local 180-deg rotate filter)
+        for im, ch in it.product(r_im, r_ch):
+            c1 = dvalues[im, ch, :, :]
+            c2 = np.rot90(self.kernel[0, :, :], 2)
+            self.dinputs[im, ch, :, :] = convolve2d(c1, c2, mode='full')
+
+        # Calculate the loss-gradient with respect to each bias. It sums over the batch/sample-, image-height-
+        # and image-width-dimensions.
+        self.dbiases = np.sum(dvalues, axis=(0, 2, 3), keepdims=True)
+        
+    def __convolve2d(self, pad=0, strides=1):
+
+        ER = self.inputs.shape[2]
+        EC = self.inputs.shape[3]
+
+        k_ER = self.kernel.shape[1]
+        k_EC = self.kernel.shape[2]
+
+        out_ER = int(((ER - k_ER + 2 * pad) / strides) + 1)
+        out_EC = int(((EC - k_EC + 2 * pad) / strides) + 1)
+        output = np.zeros([self.inputs.shape[0], self.channels, out_ER, out_EC])
+        # output = np.zeros([self.inputs.shape[0], self.channels, ER, EC])
+
+        r_im = range(self.batch_size)
+        r_ch = range(self.channels)
+        for im, ch in it.product(r_im, r_ch):
+            t1 = self.inputs[im, ch, :, :]
+            t2 = self.kernel[0, :, :]
+            output[im, ch, :, :] = convolve2d(t1, t2, mode='valid') + self.bias[im, ch]
+
+        return output
 
 class PoolingLayer():
     pass
