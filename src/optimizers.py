@@ -6,10 +6,20 @@ import numpy as np
 
 class SDG:
     """Stochastic Gradient Decent class used to update layer paramers
-    The update is the -ve learning rate multiplied by the gradient calculated in the backward step.
+    The update is the -ve learning rate multiplied by the gradient calculated 
+    in the backward step. Optionally it will also apply momentum and decay.
 
-    Attr:
-        lr (float) Learning rate to scale the gradients by for the update
+    Args:
+        lr       (float): Learning rate to scale the gradients by for the update
+        decay    (float): Decay rate used to scale learning rate
+        momentum (float): momentum factor used to scale updates to avoid local minima
+    
+    Attributes:
+        lr         (float): Learning rate to scale the gradients by for the update
+        clr        (float): Learning rate at the current step
+        decay      (float): Decay rate used to scale learning rate
+        momentum   (float): momentum factor used to scale updates to avoid local minima
+        iterations (int):   Number of times optimizer has completed a step
     """
     IMPLEMENTED = [LinearLayer]
 
@@ -21,22 +31,31 @@ class SDG:
         self.iterations = 0
 
     def init_momentum(self, layers):
+        """Initializes momentum arttribute for layer objects.
+        Args:
+            Layers (list): A list of layers that need to be updated with momentum.
+        """
         for layer in layers:
             if not hasattr(layer, 'momentum_w'):
                 layer.momentum_w = np.zeros_like(layer.weights)
                 layer.momentum_b = np.zeros_like(layer.bias)
 
     def pre_update_step(self):
+        """Update the current learning rate according to the decay and iterations"""
         decay_rate = 1/(1 + self.decay * self.iterations)
         self.clr = self.lr * decay_rate
 
     def get_updates(self, layer):
+        """Get the update values for a layer's weights and biases
+        Args:
+            Layers (list): A list of layers that need to be updated with momentum."""
         return (
             -self.clr*layer.d_w,
             -self.clr*layer.d_b
         )
 
     def get_momentum_updates(self, layer):
+        """Updates a layers momentum."""
         wu = (self.momentum * layer.momentum_w) - (self.clr * layer.d_w) 
         bu = (self.momentum * layer.momentum_b) - (self.clr * layer.d_b) 
         layer.momentum_w = wu
@@ -44,7 +63,9 @@ class SDG:
         return (wu, bu)
 
     def update(self, layers):
-        """Update a layers parameters.
+        """Update a layers parameters
+        Args:
+            Layers (list): A list of layers that need to be updated.
         """
         # Test to make sure all layers supported
         if any(l for l in layers if type(l) not in self.IMPLEMENTED):
@@ -74,7 +95,31 @@ class SDG:
         self.iterations += 1 
 
 class Adam:
-    """Adam Optimizer"""
+    """Adam Optimizer Short for Adaptive Momentum.
+    An extension to the Root mean square propagation (RSMprop) technique that adds in a bias correction mechanism used to correct the momentum and momentum caches.
+    To find the update with Adam we need to take the following steps:
+        1. Find momentum for the current step
+        2. Get corrected the momentum 
+        3. Update the cache with the square of the gradient 
+        4. Get the corrected cache 
+        5. Update weights 
+    
+    Args:
+        learning_rate (float): Learning rate to scale the gradients by for the update
+        decay         (float): Decay rate used to scale learning rate
+        epsilon       (float): Hyperparmeter for tuning update
+        beta_1        (float): Hyperparameter for calculating momentum 
+        beta_2        (float): Hyperparameter for calculating cache
+
+    Attributes:
+        lr          (float): Learning rate to scale the gradients by for the update
+        clr         (float): L:earning rate at current step
+        decay       (float): Decay rate used to scale learning rate
+        epsilon     (float): Hyperparmeter for tuning update
+        beta_1      (float): Hyperparameter for calculating momentum 
+        beta_2      (float): Hyperparameter for calculating cache
+        iterations  (int):   Number of times optimizer has completed a step
+    """
 
     IMPLEMENTED = [LinearLayer]
 
@@ -88,10 +133,15 @@ class Adam:
         self.iterations = 0
 
     def pre_update_step(self):
+        """Update the current learning rate according to the decay and iterations"""
         decay_rate = 1/(1 + self.decay * self.iterations)
         self.clr = self.lr * decay_rate
 
-    def init_momentum(self, layers:List[LinearLayer]):
+    def init_momentum(self, layers):
+        """Initializes momentum arttribute for layer objects.
+        Args:
+            Layers (list): A list of layers that need to be updated with momentum.
+        """
         for layer in layers:
             # Init momentum for weights
             layer.momentums_w = np.zeros_like(layer.weights)
@@ -101,8 +151,11 @@ class Adam:
             layer.momentums_b = np.zeros_like(layer.bias)
             layer.cache_b = np.zeros_like(layer.bias)
             
-
-    def update(self, layers:List[LinearLayer]):
+    def update(self, layers):
+        """Update a layers parameters
+        Args:
+            Layers (list): A list of layers that need to be updated.
+        """
         # pre update step
         if self.decay:
            self.pre_update_step()

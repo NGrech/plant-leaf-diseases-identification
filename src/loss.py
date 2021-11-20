@@ -13,11 +13,12 @@ class CategoricalCrossEntropyLoss:
         # to zero out scores corresponding to incorrect classes
         # We clip to make sure that none of the reaming classes are 0 or 
         # exactly 1 
-        corrected = np.sum(np.clip(y_pred, 1e-7, 1-1e-7)*y_true, axis=1)
+        clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+        corrected = np.sum(clipped*y_true, axis=1)
         # Taking the -ve log of the remaining confidence scores 
         negative_log = -np.log(corrected)
         return np.mean(negative_log)
-    
+
     def backward(y_pred, y_true):
         """Backpropagation  of the CCE Loss
 
