@@ -24,7 +24,7 @@ class Model:
         self.layers = []
         self.trainable_layers = []
         self.loss = loss
-        self.accuracy = Accuracy
+        self.accuracy = Accuracy()
         self.optim = optimizer
         self.current_loss = 0
         self.training_mode = True
@@ -76,7 +76,7 @@ class Model:
     def step_logger(self, step, steps):
         """Prints current state of model"""
         print(
-            f"Step: {step}/{steps}, accuracy{self.accuracy.current_accuracy:.3f}, loss{self.current_loss:.3f}, learning rate {self.optim.clr:.3f} "
+            f"Step: {step}/{steps}, accuracy{self.current_accuracy:.3f}, loss{self.current_loss:.3f}, learning rate {self.optim.clr:.7f} "
         )
 
     def epoch_logger(self, epoch, epochs):
@@ -101,6 +101,10 @@ class Model:
         print(
             f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
         )
+    
+    def evaluate(self, X_val, y_val, batch_size):
+        val_steps = self.get_steps(X_val, batch_size)
+        self.validate(X_val, y_val, batch_size, val_steps)
 
     def mode_train(self):
         """Sets the model and all dropout layers to training mode."""
@@ -119,7 +123,7 @@ class Model:
         self.training_mode = False
         
     def get_steps(self, X, size):
-        return np.ceil(len(X)/size)
+        return np.ceil(len(X)/size).astype(int)
 
     def reset(self):
         self.loss.reset()
@@ -144,10 +148,10 @@ class Model:
         
         for epoch in range(epochs + 1):
 
-            print(f'=== Epoch: {epoch+1} of {epochs} ===')
+            print(f'=== Epoch: {epoch+1} ===')
 
             self.reset()
-            self.training_mode()
+            self.mode_train()
 
             for step in range(steps):
 
@@ -176,6 +180,7 @@ class Model:
 
             self.epoch_logger(epoch, epochs)
 
+            print('--Validation--')
             if validation:
                 self.validate(X_test, y_test, batch_size, val_steps)
 

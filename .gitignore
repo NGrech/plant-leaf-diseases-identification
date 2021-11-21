@@ -135,3 +135,4 @@ notebooks/fashion_mnist_images/
 # IDE
 .vscode/
 {CV2_PACKAGE_FOLDER}/
+notebooks/fashion_mnist_images.zip

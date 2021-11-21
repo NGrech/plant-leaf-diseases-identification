@@ -32,7 +32,7 @@ class CategoricalCrossEntropyLoss:
         negative_log = -np.log(corrected)
 
         # accumulating loss
-        self.acc_sum += negative_log
+        self.acc_sum += np.sum(negative_log)
         self.acc_count += len(negative_log)
 
         return np.mean(negative_log)
@@ -71,7 +71,7 @@ class Accuracy:
     def forward(self, y_pred, y_true):
         """Calculates the accuracy of a batch of predictions"""
         comp = np.argmax(y_pred, axis=1) == np.argmax(y_true, axis=1)
-        self.sum += comp
+        self.sum += np.sum(comp)
         self.count += len(comp)
         return np.mean(comp)
 
