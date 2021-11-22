@@ -379,8 +379,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros_like(self.inputs)
 
-        # for im, ch in it.product(self.r_im, self.r_ch):
-        for im, ch in it.product(range(1), range(1)):
+        for im, ch in it.product(self.r_im, self.r_ch):
+        # for im, ch in it.product(range(1), range(1)):
 
             o_R = 0
             for R in r_ER_i:        
@@ -420,8 +420,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros([self.batch_size, self.channels, len(r_ER_i) + pad*2, len(r_EC_i) + pad*2])
 
-        # for im, ch in it.product(self.r_im, self.r_ch):
-        for im, ch in it.product(range(1), range(1)):
+        for im, ch in it.product(self.r_im, self.r_ch):
+        # for im, ch in it.product(range(1), range(1)):
             o_R = 0
             for R in r_ER_i:        
                 o_C = 0
