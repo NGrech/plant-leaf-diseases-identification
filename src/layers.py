@@ -240,7 +240,7 @@ class Layer2d(Module):
 
 class ConvolutionLayer(Layer2d):
     
-     """
+    """
     Convolutional transformation layer
     
     Args:
@@ -379,8 +379,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros_like(self.inputs)
 
-        for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
+        # for im, ch in it.product(self.r_im, self.r_ch):
+        for im, ch in it.product(range(1), range(1)):
 
             o_R = 0
             for R in r_ER_i:        
@@ -390,9 +390,13 @@ class PoolingLayer(Layer2d):
                     # Get each kernel-sampled value from inputs
                     val = self.inputs[im, ch, R: R + r_ER_i.step, C: C + r_EC_i.step]
                     # val = self.inputs[im, ch, R - int(k_ER/2): R + int(k_ER/2), C - int(k_EC/2): C + int(k_EC/2)]
-                    # Create a mask based on max value in each kernel
+
+                    # Create a mask based on max value(s) in each kernel
                     mask = (val == val.max()).astype(int)
-                    # Calulate gradient with respect to the inputs
+
+                    print(mask)
+
+                    # Calculate gradient with respect to the inputs
                     output[im, ch, R: R + r_ER_i.step, C: C + r_EC_i.step] = mask * dvalues[im, ch, o_R, o_C]
 
                     o_C += 1
@@ -416,8 +420,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros([self.batch_size, self.channels, len(r_ER_i) + pad*2, len(r_EC_i) + pad*2])
 
-        for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
+        # for im, ch in it.product(self.r_im, self.r_ch):
+        for im, ch in it.product(range(1), range(1)):
             o_R = 0
             for R in r_ER_i:        
                 o_C = 0
