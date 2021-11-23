@@ -1,5 +1,6 @@
 """Module for model creating, loading and saving"""
 import mlflow
+import os
 import copy
 import pickle
 import numpy as np
@@ -32,6 +33,14 @@ class Model:
         self.optim = optimizer
         self.current_loss = 0
         self.training_mode = True
+        self.val_loss = None
+
+    def set_save_config(self, model_name=None, save_path=None):
+        """Configure path and name of model."""
+        self.model_name = ('my_model', model_name)[model_name!=None]
+        _base_pth = ('.', save_path)[save_path!=None]
+        self.save_path = os.path.join(_base_pth, self.model_name)
+
 
     def __repr__(self) -> str:
         """Custom dunder representer method to print out all the layers of the network."""
@@ -107,9 +116,20 @@ class Model:
             self.loss.forward(self.layers[-1].output, y_batch)
             self.accuracy.forward(self.layers[-1].output, y_batch)
 
+        current_vall_loss = self.loss.get_accumulated_loss()
+
+        if self.val_loss:
+            if self.val_loss > current_vall_loss:
+                self.val_loss = current_vall_loss
+                print('New best model ... saving')
+                self.save(self.save_path)
+        else:
+            # Not saving first version of model 
+            self.val_loss = current_vall_loss
+
         if mlflow.active_run():
             mlflow.log_metric('validation_accuracy', self.accuracy.get_accumulated_accuracy(), step=epoch)
-            mlflow.log_metric('validation_loss', self.loss.get_accumulated_loss(), step=epoch)
+            mlflow.log_metric('validation_loss', current_vall_loss, step=epoch)
 
         print(
             f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
