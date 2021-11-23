@@ -194,7 +194,7 @@ class Layer2d(Module):
         r_im (range):       range for batch    
         r_ch (range):       range for channels
 
-        dinputs (np_array):     The current gradients with respect to the layer input
+        grad (np_array):     The current gradients with respect to the layer input
         dkernel (np_array):     The current gradients with respect to the kernel weights
         dbiases (np_array):     The current gradients with respect to the biases
     """
@@ -236,7 +236,7 @@ class Layer2d(Module):
             dvalues (np_array): array of derivatives from the previous layer/function.
         """
 
-        self.dinputs = np.zeros_like(self.inputs)
+        self.grad = np.zeros_like(self.inputs)
 
 class ConvolutionLayer(Layer2d):
     
@@ -294,7 +294,7 @@ class ConvolutionLayer(Layer2d):
         for im, ch in it.product(self.r_im, self.r_ch):
             c1 = dvalues[im, ch, :, :]
             c2 = np.rot90(self.kernel[0, :, :], 2)
-            self.dinputs[im, ch, :, :] = convolve2d(c1, c2, mode='full')
+            self.grad[im, ch, :, :] = convolve2d(c1, c2, mode='full')
 
         # Calculate the loss-gradient with respect to each bias. It sums over the batch/sample-, image-height-
         # and image-width-dimensions.
@@ -361,7 +361,7 @@ class PoolingLayer(Layer2d):
 
         super().backward(dvalues)
 
-        self.dinputs = self.__derivative(dvalues)
+        self.grad = self.__derivative(dvalues)
 
 
     def __derivative(self, dvalues):
