@@ -4,6 +4,9 @@ import numpy as np
 from scipy.signal import convolve2d
 import itertools as it
 
+def doit():
+    print('hi')
+
 class LinearLayer(Module):
     """Linear transformation layer of the type o = ixW + b,
     
