@@ -1,4 +1,5 @@
 """Module for model creating, loading and saving"""
+import mlflow
 import numpy as np
 from layers import Dropout
 from loss import Accuracy
@@ -8,8 +9,9 @@ class Model:
     """Model class designed as a container to simplify the building and training of networks.
     
     Args:
-    optimizer:  The optimizer that should be used
-    Loss:       The loss class that should be used
+    optimizer:      The optimizer that should be used
+    Loss:           The loss class that should be used
+    experiment_id:  MLflow experiment Id 
 
     Attributes:
         layers              (list):    List of all layers in the network in their activation sequence 
@@ -74,18 +76,23 @@ class Model:
             l.backward(self.layers[i+1].grad)
         
     def step_logger(self, step, steps):
-        """Prints current state of model"""
+        """Log current state of model"""
         print(
             f"Step: {step}/{steps}, accuracy{self.current_accuracy:.3f}, loss{self.current_loss:.3f}, learning rate {self.optim.clr:.7f} "
         )
 
     def epoch_logger(self, epoch, epochs):
-        """Prints current state of model"""
+        """log current state of model"""
+        if mlflow.active_run():
+            mlflow.log_metric('accuracy', self.current_accuracy, step=epoch)
+            mlflow.log_metric('loss', self.current_loss, step=epoch)
+            mlflow.log_metric('learning rate', self.optim.clr, step=epoch)
+
         print(
-            f"Epoch: {epoch}/{epochs}, accuracy{self.accuracy.get_accumulated_accuracy():.3f}, loss{self.loss.get_accumulated_loss():.3f}, learning rate {self.optim.clr:.3f}"
+            f"Epoch: {epoch+1}/{epochs}, accuracy{self.accuracy.get_accumulated_accuracy():.3f}, loss{self.loss.get_accumulated_loss():.3f}, learning rate {self.optim.clr:.3f}"
         )
     
-    def validate(self, X_val, y_val, batch_size, steps):
+    def validate(self, X_val, y_val, batch_size, steps, epoch=None):
         """Handles the validation pass of the network"""
         self.mode_eval()
         self.reset()
@@ -97,6 +104,10 @@ class Model:
 
             self.loss.forward(self.layers[-1].output, y_batch)
             self.accuracy.forward(self.layers[-1].output, y_batch)
+
+        if mlflow.active_run():
+            mlflow.log_metric('validation_accuracy', self.accuracy.get_accumulated_accuracy(), step=epoch)
+            mlflow.log_metric('validation_loss', self.loss.get_accumulated_loss(), step=epoch)
 
         print(
             f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
@@ -146,7 +157,7 @@ class Model:
             X_test, y_test = validation
             val_steps = self.get_steps(X_test, batch_size)
         
-        for epoch in range(epochs + 1):
+        for epoch in range(epochs):
 
             print(f'=== Epoch: {epoch+1} ===')
 
@@ -182,6 +193,6 @@ class Model:
 
             print('--Validation--')
             if validation:
-                self.validate(X_test, y_test, batch_size, val_steps)
+                self.validate(X_test, y_test, batch_size, val_steps, epoch)
 
     
