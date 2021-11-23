@@ -268,7 +268,9 @@ class ConvolutionLayer(Layer2d):
 
         super().forward(inputs)
 
-        self.outputs = self.__convolve2d()
+        self.output = self.__convolve2d()
+
+        return self.output
 
     def backward(self, dvalues):
 
@@ -349,7 +351,9 @@ class PoolingLayer(Layer2d):
 
         super().forward(inputs)
 
-        self.outputs = self.__pool2d(0, 1)
+        self.output = self.__pool2d(0, 1)
+
+        return self.output
 
     def backward(self, dvalues):
 
@@ -379,8 +383,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros_like(self.inputs)
 
-        for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
+        # for im, ch in it.product(self.r_im, self.r_ch):
+        for im, ch in it.product(range(1), range(1)):
 
             o_R = 0
             for R in r_ER_i:        
@@ -393,8 +397,6 @@ class PoolingLayer(Layer2d):
 
                     # Create a mask based on max value(s) in each kernel
                     mask = (val == val.max()).astype(int)
-
-                    print(mask)
 
                     # Calculate gradient with respect to the inputs
                     output[im, ch, R: R + r_ER_i.step, C: C + r_EC_i.step] = mask * dvalues[im, ch, o_R, o_C]
@@ -420,8 +422,8 @@ class PoolingLayer(Layer2d):
 
         output = np.zeros([self.batch_size, self.channels, len(r_ER_i) + pad*2, len(r_EC_i) + pad*2])
 
-        for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
+        # for im, ch in it.product(self.r_im, self.r_ch):
+        for im, ch in it.product(range(1), range(1)):
             o_R = 0
             for R in r_ER_i:        
                 o_C = 0
