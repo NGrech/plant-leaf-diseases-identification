@@ -50,6 +50,9 @@ class Model:
         self.trainable_layers = [l for l in layers if hasattr(l, 'weights')]
 
     def get_loss(self, y_pred, y_true):
+
+        print(y_pred, y_true)
+
         """Calculates the current loss of the network"""
         # Calculating loss and regularized loss  
         loss = self.loss.forward(y_pred, y_true)

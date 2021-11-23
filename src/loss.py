@@ -26,6 +26,7 @@ class CategoricalCrossEntropyLoss:
         # to zero out scores corresponding to incorrect classes
         # We clip to make sure that none of the reaming classes are 0 or 
         # exactly 1 
+
         clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
         corrected = np.sum(clipped*y_true, axis=1)
         # Taking the -ve log of the remaining confidence scores 
