@@ -136,3 +136,7 @@ notebooks/fashion_mnist_images/
 .vscode/
 {CV2_PACKAGE_FOLDER}/
 notebooks/fashion_mnist_images.zip
+notebooks/fashion_mnist_images.zip
+
+# MLflow
+*/mlruns/
