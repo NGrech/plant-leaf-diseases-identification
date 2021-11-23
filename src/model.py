@@ -1,5 +1,7 @@
 """Module for model creating, loading and saving"""
 import mlflow
+import copy
+import pickle
 import numpy as np
 from layers import Dropout
 from loss import Accuracy
@@ -195,4 +197,25 @@ class Model:
             if validation:
                 self.validate(X_test, y_test, batch_size, val_steps, epoch)
 
-    
+    def save(self, path):
+        """Save a checkpoint of the model."""
+        checkpoint = copy.deepcopy(self)
+
+        # Clearing out data 
+        checkpoint.reset()
+        # Layer atters to reset 
+        l_attributes = ['input', 'output', 'd_w', 'd_b', 'grad']
+        for layer in checkpoint.layers:
+            for att in l_attributes:
+                layer.__dict__.pop(att, None)
+
+        # Saving model
+        with open(path, 'wb') as fs: 
+            pickle.dump(checkpoint, fs)
+
+    @staticmethod
+    def load(path):
+        """Load a checkpoint"""
+        with open(path, 'rb') as fs:
+            checkpoint = pickle.load(fs)
+        return checkpoint
