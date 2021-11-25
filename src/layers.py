@@ -407,8 +407,6 @@ class PoolingLayer(Layer2d):
                     # Create a mask based on max value(s) in each kernel
                     mask = (val == val.max()).astype(int)
 
-                    print(mask)
-
                     # Calculate gradient with respect to the inputs
                     output[im, ch, R: R + r_ER_i.step, C: C + r_EC_i.step] = mask * dvalues[im, ch, o_R, o_C]
 
