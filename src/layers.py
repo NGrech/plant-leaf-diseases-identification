@@ -244,19 +244,27 @@ class ConvolutionLayer(Layer2d):
     Convolutional transformation layer
     
     Args:
-        kernel_size (int):  size of convolution kernel
+        kernel_size (int):      The size of convolution kernel
+        channels_out (int):     The number of layer output channels
         
     Attributes:
-        kernels (int):      number of kernel in kernel 
-        kernel (np_array):  numpy array of a number of 2d kernels
+        kernels (int):          The number of kernel in kernel 
+        kernel (np_array):      A numpy array of a number of 2d kernels
 
         dkernel (np_array):     The current gradients with respect to the kernel weights
         dbiases (np_array):     The current gradients with respect to the biases
     """
 
-    def __init__(self, channels, kernel_size):
+    def __init__(self, channels, channels_out, kernel_size):
 
         super().__init__(channels, kernel_size)
+
+        self.channels_out = channels_out
+        self.r_ch_out = range(self.channels_out)
+
+        # Filter kernel definition/initialization
+        # Currernt initialization: All equal - Low-pass (self.kernel overrides self.kernel in super()-class)
+        self.kernel = np.ones([self.channels_out, channels, kernel_size, kernel_size])
 
     def forward(self, inputs):
         
@@ -268,7 +276,9 @@ class ConvolutionLayer(Layer2d):
 
         super().forward(inputs)
 
-        self.outputs = self.__convolve2d()
+        self.output = self.__convolve2d()
+
+        return self.output
 
     def backward(self, dvalues):
 
@@ -282,19 +292,19 @@ class ConvolutionLayer(Layer2d):
 
         self.dkernel = np.zeros_like(self.kernel)
 
-         # Calculate the loss-gradient with repect to the kernel weights (dL/dk = dL/dO * dO/dX, dL/dO = dvalues)
-         # => dL/dk = convolution(local inputs, back-propagated derivatives)
-        for im, ch in it.product(self.r_im, self.r_ch):
+        # Calculate the loss-gradient with repect to the kernel weights (dL/dk = dL/dO * dO/dX, dL/dO = dvalues)
+        # => dL/dk = convolution(local inputs, back-propagated derivatives)
+        for im, ch_out, ch in it.product(self.r_im, self.r_ch_out, self.r_ch):
             c1 = self.inputs[im, ch, :, :]
-            c2 = dvalues[im, ch, :, :]
-            self.dkernel[0, :, :] = convolve2d(c1, c2, mode='valid')
+            c2 = dvalues[im, ch_out, :, :]
+            self.dkernel[ch_out, ch, :, :] = convolve2d(c1, c2, mode='valid')
 
         # Calculate the loss-gradient with repect to the layer inputs (dL/dX = dL/dO * dO/dk, dL/dO = dvalues)
-        #  => dL/dX = full-convolution(back-propagated derivatives, local 180-deg rotate filter)
-        for im, ch in it.product(self.r_im, self.r_ch):
-            c1 = dvalues[im, ch, :, :]
-            c2 = np.rot90(self.kernel[0, :, :], 2)
-            self.dinputs[im, ch, :, :] = convolve2d(c1, c2, mode='full')
+        # => dL/dX = full-convolution(back-propagated derivatives, local 180-deg rotate filter)
+        for im, ch_out, ch in it.product(self.r_im, self.r_ch_out, self.r_ch):
+            c1 = dvalues[im, ch_out, :, :]
+            c2 = np.rot90(self.kernel[ch_out, ch, :, :], 2)
+            self.grad[im, ch, :, :] = convolve2d(c1, c2, mode='full')
 
         # Calculate the loss-gradient with respect to each bias. It sums over the batch/sample-, image-height-
         # and image-width-dimensions.
@@ -305,18 +315,21 @@ class ConvolutionLayer(Layer2d):
         ER = self.inputs.shape[2]
         EC = self.inputs.shape[3]
 
-        k_ER = self.kernel.shape[1]
-        k_EC = self.kernel.shape[2]
+        k_ER = self.kernel.shape[2]
+        k_EC = self.kernel.shape[3]
 
         out_ER = int(((ER - k_ER + 2 * pad) / strides) + 1)
         out_EC = int(((EC - k_EC + 2 * pad) / strides) + 1)
-        output = np.zeros([self.inputs.shape[0], self.channels, out_ER, out_EC])
-        # output = np.zeros([self.inputs.shape[0], self.channels, ER, EC])
+        output = np.zeros([self.batch_size, self.channels_out, out_ER, out_EC])
+        # output = np.zeros([self.batch_size, self.channels_out, ER, EC])
 
-        for im, ch in it.product(self.r_im, self.r_ch):
-            t1 = self.inputs[im, ch, :, :]
-            t2 = self.kernel[0, :, :]
-            output[im, ch, :, :] = convolve2d(t1, t2, mode='valid') + self.bias[im, ch]
+        for im, ch_out in it.product(self.r_im, self.r_ch_out):
+            sum_ch = []
+            for ch in self.r_ch:
+                t1 = self.inputs[im, ch, :, :]
+                t2 = self.kernel[ch_out, ch, :, :]
+                sum_ch.append(convolve2d(t1, t2, mode='valid') + self.bias[im, ch])
+            output[im, ch_out, :, :] = sum(sum_ch)
 
         return output
 
@@ -393,8 +406,6 @@ class PoolingLayer(Layer2d):
 
                     # Create a mask based on max value(s) in each kernel
                     mask = (val == val.max()).astype(int)
-
-                    print(mask)
 
                     # Calculate gradient with respect to the inputs
                     output[im, ch, R: R + r_ER_i.step, C: C + r_EC_i.step] = mask * dvalues[im, ch, o_R, o_C]
