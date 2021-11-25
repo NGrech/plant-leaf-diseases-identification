@@ -13,6 +13,9 @@ matplotlib = "^3.4.3"
 jupyter-contrib-nbextensions = "^0.5.1"
 mlflow = "^1.21.0"
 opencv-python = "^4.5.4"
+opencv-contrib-Python = "*"
+scipy = "^1.7.2"
+Pillow = "^8.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
