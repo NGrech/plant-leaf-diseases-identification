@@ -199,9 +199,6 @@ class FlattenLayer(Module):
         self.output = inputs.reshape(inputs.shape[0],
                                      inputs.shape[1] * inputs.shape[2] * inputs.shape[3])
 
-        # print(self.inputs.shape)
-        # print(self.output.shape)
-
         return self.output
 
     def backward(self, dvalues):
@@ -261,8 +258,6 @@ class Layer2d(Module):
 
         self.inputs = inputs
         self.batch_size = self.inputs.shape[0]
-        
-        #  self.bias = np.zeros([self.batch_size, self.channels])
 
         self.r_im = range(self.batch_size)
 
@@ -300,13 +295,9 @@ class ConvolutionLayer(Layer2d):
         self.channels_out = channels_out
         self.r_ch_out = range(self.channels_out)
 
-        # Filter kernel definition/initialization (overrides self.kernel in super()-class)
-        # self.kernel = np.ones([self.channels_out, channels, kernel_size, kernel_size])
-        # self.kernel = np.random.normal(-1.0, 1.0, (self.channels_out, channels, kernel_size, kernel_size))
-        # self.kernel = np.random.normal(-0.1, 0.1, (self.channels_out, channels, kernel_size, kernel_size))
+        # Filter kernel initialization (overrides self.kernel in super()-class)
         self.kernel = np.random.uniform(-0.1, 0.1, (self.channels_out, channels, kernel_size, kernel_size))
 
-        # Biases (overrides self.biases in super()-class)
         self.biases = np.random.uniform(-0.1, 0.1, (self.channels_out, channels))
 
     def forward(self, inputs):
@@ -320,9 +311,6 @@ class ConvolutionLayer(Layer2d):
         super().forward(inputs)
 
         self.output = self.__convolve2d()
-
-        # print('-- ConvolutionLayer --')
-        # print(self.inputs.shape,'=>',self.output.shape)
 
         return self.output
 
