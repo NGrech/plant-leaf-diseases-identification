@@ -4,7 +4,6 @@ import os
 import copy
 import pickle
 import numpy as np
-import time
 from layers import Dropout
 from loss import Accuracy
 
