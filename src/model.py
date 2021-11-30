@@ -229,9 +229,9 @@ class Model:
             for att in l_attributes:
                 layer.__dict__.pop(att, None)
 
-        # Saving model
-        with open(path, 'wb') as fs: 
-            pickle.dump(checkpoint, fs)
+        # # Saving model
+        # with open(path, 'wb') as fs: 
+        #     pickle.dump(checkpoint, fs)
 
     @staticmethod
     def load(path):
