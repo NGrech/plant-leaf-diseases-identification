@@ -212,8 +212,6 @@ class Model:
                 if log:
                     if (not (step % log_freq)) or (step == steps-1):
                         self.step_logger(step, steps)
-                    
-                    # self.step_logger(50, steps)
 
             self.epoch_logger(epoch, epochs)
 
@@ -233,9 +231,9 @@ class Model:
             for att in l_attributes:
                 layer.__dict__.pop(att, None)
 
-        # # Saving model
-        # with open(path, 'wb') as fs: 
-        #     pickle.dump(checkpoint, fs)
+        # Saving model
+        with open(path, 'wb') as fs: 
+            pickle.dump(checkpoint, fs)
 
     @staticmethod
     def load(path):
