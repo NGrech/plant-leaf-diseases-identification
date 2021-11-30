@@ -130,10 +130,8 @@ class LinearLayer(Module):
 class Dropout(Module):
     """ Dropout Layer, intended to be used in traning to deactivate a random portion of the neurons from 
     a pervious layer to based on the work https://arxiv.org/abs/1207.0580
-
     Args:
         p (float): probability of an element to be set to zero
-
     Attributes:
         p            (float):   probability of an element to be set to zero
         mask         (ndarray): Latest scaled binary mask used to zero out input elements 
@@ -174,6 +172,40 @@ class Dropout(Module):
         """
         self.grad = grads * self.mask
     
+class FlattenLayer(Module):
+
+    """
+    Flattening layer that flattens the channels, height and width dimensions
+    
+    Args:
+        None
+        
+    Attributes:
+        inputs (np_array):  numpy array of latest batch of inputs with the dims (batch_size, channels, height, width)
+        output (np_array):  numpy array of latest batch of flattened outputs
+    """
+
+    def __init__(self):
+
+        super().__init__()
+
+        self.grad = None
+
+    def forward(self, inputs):
+
+        self.inputs = inputs
+        self.output = inputs.reshape(inputs.shape[0],
+                                     inputs.shape[1] * inputs.shape[2] * inputs.shape[3])
+
+        return self.output
+
+    def backward(self, dvalues):
+
+        self.grad = dvalues.reshape(self.inputs.shape[0],
+                                    self.inputs.shape[1],
+                                    self.inputs.shape[2],
+                                    self.inputs.shape[3])
+
 class Layer2d(Module):
     
     """
@@ -186,15 +218,12 @@ class Layer2d(Module):
     Attributes:
         kernels (int):      number of kernels in kernel 
         kernel (np_array):  numpy array of a number of 2d kernels
-        bias (np_array):    numpy array of the bias
         inputs (np_array):  numpy array of latest batch of inputs with the dims (batch_size, channels, height, width)
         outputs (np_array): numpy array of latest batch of outputs
         batch_size (int):   number of images in latest inputs
-
         r_im (range):       range for batch    
         r_ch (range):       range for channels
-
-        dinputs (np_array):     The current gradients with respect to the layer input
+        grad (np_array):     The current gradients with respect to the layer input
         dkernel (np_array):     The current gradients with respect to the kernel weights
         dbiases (np_array):     The current gradients with respect to the biases
     """
@@ -217,26 +246,23 @@ class Layer2d(Module):
     def forward(self, inputs):
         
         """Forward pass through a 2d-layer
-
         Args:
             inputs (np_array): numpy array of latest batch of inputs with the dims (batch_size, channels, height, width).
         """
 
         self.inputs = inputs
         self.batch_size = self.inputs.shape[0]
-        self.bias = np.zeros([self.batch_size, self.channels])
 
         self.r_im = range(self.batch_size)
 
     def backward(self, dvalues):
 
         """Backward pass through a 2d-layer
-
         Args:
             dvalues (np_array): array of derivatives from the previous layer/function.
         """
 
-        self.dinputs = np.zeros_like(self.inputs)
+        self.grad = np.zeros_like(self.inputs)
 
 class ConvolutionLayer(Layer2d):
     
@@ -250,7 +276,6 @@ class ConvolutionLayer(Layer2d):
     Attributes:
         kernels (int):          The number of kernel in kernel 
         kernel (np_array):      A numpy array of a number of 2d kernels
-
         dkernel (np_array):     The current gradients with respect to the kernel weights
         dbiases (np_array):     The current gradients with respect to the biases
     """
@@ -262,14 +287,14 @@ class ConvolutionLayer(Layer2d):
         self.channels_out = channels_out
         self.r_ch_out = range(self.channels_out)
 
-        # Filter kernel definition/initialization
-        # Currernt initialization: All equal - Low-pass (self.kernel overrides self.kernel in super()-class)
-        self.kernel = np.ones([self.channels_out, channels, kernel_size, kernel_size])
+        # Filter kernel initialization (overrides self.kernel in super()-class)
+        self.kernel = np.random.uniform(-0.1, 0.1, (self.channels_out, channels, kernel_size, kernel_size))
+
+        self.biases = np.random.uniform(-0.1, 0.1, (self.channels_out, channels))
 
     def forward(self, inputs):
         
         """Forward pass through the convolution layer
-
         Args:
             inputs (np_array): numpy array of latest batch of inputs with the dims (batch_size, channels, height, width).
         """
@@ -283,7 +308,6 @@ class ConvolutionLayer(Layer2d):
     def backward(self, dvalues):
 
         """Backpropagation through the convolution layer
-
         Args:
             dvalues (np_array): array of derivatives from the previous layer/function.
         """
@@ -298,6 +322,7 @@ class ConvolutionLayer(Layer2d):
             c1 = self.inputs[im, ch, :, :]
             c2 = dvalues[im, ch_out, :, :]
             self.dkernel[ch_out, ch, :, :] = convolve2d(c1, c2, mode='valid')
+            self.kernel[ch_out, ch, :, :] -= self.dkernel[ch_out, ch, :, :]
 
         # Calculate the loss-gradient with repect to the layer inputs (dL/dX = dL/dO * dO/dk, dL/dO = dvalues)
         # => dL/dX = full-convolution(back-propagated derivatives, local 180-deg rotate filter)
@@ -307,8 +332,10 @@ class ConvolutionLayer(Layer2d):
             self.grad[im, ch, :, :] = convolve2d(c1, c2, mode='full')
 
         # Calculate the loss-gradient with respect to each bias. It sums over the batch/sample-, image-height-
-        # and image-width-dimensions.
+        # and image-width-dimensions and puts the sums into each out-channel position
         self.dbiases = np.sum(dvalues, axis=(0, 2, 3), keepdims=True)
+        for ch_out, ch in it.product(self.r_ch_out, self.r_ch):
+            self.biases[ch_out, ch] -= self.dbiases[0, ch_out, 0, 0]
 
     def __convolve2d(self, pad=0, strides=1):
 
@@ -328,7 +355,7 @@ class ConvolutionLayer(Layer2d):
             for ch in self.r_ch:
                 t1 = self.inputs[im, ch, :, :]
                 t2 = self.kernel[ch_out, ch, :, :]
-                sum_ch.append(convolve2d(t1, t2, mode='valid') + self.bias[im, ch])
+                sum_ch.append(convolve2d(t1, t2, mode='valid') + self.biases[ch_out, ch])
             output[im, ch_out, :, :] = sum(sum_ch)
 
         return output
@@ -355,26 +382,28 @@ class PoolingLayer(Layer2d):
     def forward(self, inputs):
         
         """Forward pass through the pooling layer
-
         Args:
             inputs (np_array): array of derivatives from the previous layer/function.
         """
 
         super().forward(inputs)
 
-        self.outputs = self.__pool2d(0, 1)
+        self.output = self.__pool2d(0, 1)
+
+
+
+        return self.output
 
     def backward(self, dvalues):
 
         """Backward pass through a max-pooling-layer
-
         Args:
             dvalues (np_array): array of derivatives from the previous layer/function.
         """
 
         super().backward(dvalues)
 
-        self.dinputs = self.__derivative(dvalues)
+        self.grad = self.__derivative(dvalues)
 
 
     def __derivative(self, dvalues):
@@ -393,7 +422,6 @@ class PoolingLayer(Layer2d):
         output = np.zeros_like(self.inputs)
 
         for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
 
             o_R = 0
             for R in r_ER_i:        
@@ -432,7 +460,6 @@ class PoolingLayer(Layer2d):
         output = np.zeros([self.batch_size, self.channels, len(r_ER_i) + pad*2, len(r_EC_i) + pad*2])
 
         for im, ch in it.product(self.r_im, self.r_ch):
-        # for im, ch in it.product(range(1), range(1)):
             o_R = 0
             for R in r_ER_i:        
                 o_C = 0
