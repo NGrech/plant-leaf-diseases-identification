@@ -4,6 +4,7 @@ import os
 import copy
 import pickle
 import numpy as np
+import time
 from layers import Dropout
 from loss import Accuracy
 
@@ -173,10 +174,9 @@ class Model:
     def train(self, X, y, epochs=1, batch_size=1, log=True, log_freq=100, validation=None):
         """Handles the trining loop."""
 
-        print('hi')
-
         # Calculating # of steps for each epoch
         steps = self.get_steps(X, batch_size)
+
         if validation:
             X_test, y_test = validation
             val_steps = self.get_steps(X_test, batch_size)
@@ -212,6 +212,8 @@ class Model:
                 if log:
                     if (not (step % log_freq)) or (step == steps-1):
                         self.step_logger(step, steps)
+                    
+                    # self.step_logger(50, steps)
 
             self.epoch_logger(epoch, epochs)
 
@@ -231,9 +233,9 @@ class Model:
             for att in l_attributes:
                 layer.__dict__.pop(att, None)
 
-        # Saving model
-        with open(path, 'wb') as fs: 
-            pickle.dump(checkpoint, fs)
+        # # Saving model
+        # with open(path, 'wb') as fs: 
+        #     pickle.dump(checkpoint, fs)
 
     @staticmethod
     def load(path):

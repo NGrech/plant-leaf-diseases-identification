@@ -22,6 +22,9 @@ class ReLU(Module):
         return self.output
     
     def backward(self, d_vals):
+
+        # print(self.inputs.shape, d_vals.shape)
+
         self.grad = d_vals.copy()
         self.grad[self.inputs <= 0] = 0
 
