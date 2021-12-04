@@ -123,7 +123,7 @@ class Adam:
 
     IMPLEMENTED = [LinearLayer]
 
-    def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-7, beta_1=0.9, beta_2=0.999) -> None:
+    def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-8, beta_1=0.9, beta_2=0.999) -> None:
         self.lr = learning_rate
         self.clr = learning_rate # current learning rate
         self.decay = decay
