@@ -45,28 +45,23 @@ class Model:
         _base_pth = ('.', save_path)[save_path!=None]
         self.save_path = os.path.join(_base_pth, self.model_name)
 
-    def add_early_stop(self, treshold, mode='>='):
+    def add_early_stop(self, treshold):
         """Add early stop functionality to model"""
         self.early_stop_treshold = treshold
         self.early_stop_counter = 0
-        self.early_stop_prev_val = None
-        if mode == '>=':
-            self.early_stop_function = np.greater_equal
-        else:
-            self.early_stop_function = np.less_equal
+        self.early_stop_prev_val = np.Inf
 
     def check_early_stop(self):
         """Checking for early stop condition"""
-        if self.early_stop_prev_val:
-            if self.early_stop_function(self.loss.get_accumulated_loss(), self.early_stop_prev_val):
-                self.early_stop_counter += 1
-            else:
-                self.early_stop_counter = 0
+        if self.loss.get_accumulated_loss() < self.early_stop_prev_val:
+            self.early_stop_prev_val = self.loss.get_accumulated_loss()
+            self.early_stop_counter = 0
         else:
-             self.early_stop_prev_val = self.loss.get_accumulated_loss()
-        
+            self.early_stop_counter += 1
+
         if self.early_stop_counter >= self.early_stop_treshold:
             return True
+
         return False
 
     def __repr__(self) -> str:
@@ -135,7 +130,7 @@ class Model:
         pred_time = (epochs*self.acc_time)/(epoch+1)
         print(f"Estimated reamining runtime: {str(timedelta(seconds=pred_time))}")
     
-    def validate(self, X_val, y_val, batch_size, steps, epoch=None):
+    def validate(self, X_val, y_val, batch_size, steps, epoch=None, save_model=True):
         """Handles the validation pass of the network"""
         self.mode_eval()
         self.reset()
@@ -150,14 +145,15 @@ class Model:
 
         current_vall_loss = self.loss.get_accumulated_loss()
 
-        if self.val_loss:
-            if self.val_loss > current_vall_loss:
+        if hasattr(self, 'save_path'):
+            if self.val_loss:
+                if self.val_loss > current_vall_loss and save_model:
+                    self.val_loss = current_vall_loss
+                    print('New best model ... saving')
+                    self.save(self.save_path)
+            else:
+                # Not saving first version of model 
                 self.val_loss = current_vall_loss
-                print('New best model ... saving')
-                self.save(self.save_path)
-        else:
-            # Not saving first version of model 
-            self.val_loss = current_vall_loss
 
         if mlflow.active_run():
             mlflow.log_metric('validation_accuracy', self.accuracy.get_accumulated_accuracy(), step=epoch)
@@ -169,7 +165,7 @@ class Model:
     
     def evaluate(self, X_val, y_val, batch_size):
         val_steps = self.get_steps(X_val, batch_size)
-        self.validate(X_val, y_val, batch_size, val_steps)
+        self.validate(X_val, y_val, batch_size, val_steps, save_model=False)
 
     def mode_train(self):
         """Sets the model and all dropout layers to training mode."""
