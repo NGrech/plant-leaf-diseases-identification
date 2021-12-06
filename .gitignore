@@ -130,8 +130,9 @@ dmypy.json
 
 # Data 
 data/
-notebooks/fashion_mnist_images/
 notebooks/models/
+notebooks/testing/fashion_mnist_images/
+notebooks/testing/fashion_mnist_images.zip
 
 # IDE
 .vscode/

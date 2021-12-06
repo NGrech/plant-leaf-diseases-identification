@@ -6,6 +6,8 @@ import pickle
 import numpy as np
 from layers import Dropout
 from loss import Accuracy
+from time import time
+from datetime import timedelta
 
 
 class Model:
@@ -34,6 +36,8 @@ class Model:
         self.current_loss = 0
         self.training_mode = True
         self.val_loss = None
+        self.start_time = None
+        self.acc_time = 0
 
     def set_save_config(self, model_name=None, save_path=None):
         """Configure path and name of model."""
@@ -41,6 +45,24 @@ class Model:
         _base_pth = ('.', save_path)[save_path!=None]
         self.save_path = os.path.join(_base_pth, self.model_name)
 
+    def add_early_stop(self, treshold):
+        """Add early stop functionality to model"""
+        self.early_stop_treshold = treshold
+        self.early_stop_counter = 0
+        self.early_stop_prev_val = np.Inf
+
+    def check_early_stop(self):
+        """Checking for early stop condition"""
+        if self.loss.get_accumulated_loss() < self.early_stop_prev_val:
+            self.early_stop_prev_val = self.loss.get_accumulated_loss()
+            self.early_stop_counter = 0
+        else:
+            self.early_stop_counter += 1
+
+        if self.early_stop_counter >= self.early_stop_treshold:
+            return True
+
+        return False
 
     def __repr__(self) -> str:
         """Custom dunder representer method to print out all the layers of the network."""
@@ -94,16 +116,21 @@ class Model:
 
     def epoch_logger(self, epoch, epochs):
         """log current state of model"""
+        epoch_time = time() - self.start_time
+        self.acc_time += epoch_time
         if mlflow.active_run():
             mlflow.log_metric('accuracy', self.current_accuracy, step=epoch)
             mlflow.log_metric('loss', self.current_loss, step=epoch)
             mlflow.log_metric('learning rate', self.optim.clr, step=epoch)
+            mlflow.log_metric('execution time', epoch_time, step=epoch)
 
         print(
             f"Epoch: {epoch+1}/{epochs}, accuracy{self.accuracy.get_accumulated_accuracy():.3f}, loss{self.loss.get_accumulated_loss():.3f}, learning rate {self.optim.clr:.3f}"
         )
+        pred_time = (epochs*self.acc_time)/(epoch+1)
+        print(f"Estimated reamining runtime: {str(timedelta(seconds=pred_time))}")
     
-    def validate(self, X_val, y_val, batch_size, steps, epoch=None):
+    def validate(self, X_val, y_val, batch_size, steps, epoch=None, save_model=True):
         """Handles the validation pass of the network"""
         self.mode_eval()
         self.reset()
@@ -118,14 +145,15 @@ class Model:
 
         current_vall_loss = self.loss.get_accumulated_loss()
 
-        if self.val_loss:
-            if self.val_loss > current_vall_loss:
+        if hasattr(self, 'save_path'):
+            if self.val_loss:
+                if self.val_loss > current_vall_loss and save_model:
+                    self.val_loss = current_vall_loss
+                    print('New best model ... saving')
+                    self.save(self.save_path)
+            else:
+                # Not saving first version of model 
                 self.val_loss = current_vall_loss
-                print('New best model ... saving')
-                self.save(self.save_path)
-        else:
-            # Not saving first version of model 
-            self.val_loss = current_vall_loss
 
         if mlflow.active_run():
             mlflow.log_metric('validation_accuracy', self.accuracy.get_accumulated_accuracy(), step=epoch)
@@ -137,7 +165,7 @@ class Model:
     
     def evaluate(self, X_val, y_val, batch_size):
         val_steps = self.get_steps(X_val, batch_size)
-        self.validate(X_val, y_val, batch_size, val_steps)
+        self.validate(X_val, y_val, batch_size, val_steps, save_model=False)
 
     def mode_train(self):
         """Sets the model and all dropout layers to training mode."""
@@ -172,7 +200,6 @@ class Model:
     
     def train(self, X, y, epochs=1, batch_size=1, log=True, log_freq=100, validation=None):
         """Handles the trining loop."""
-
         # Calculating # of steps for each epoch
         steps = self.get_steps(X, batch_size)
         if validation:
@@ -182,7 +209,7 @@ class Model:
         for epoch in range(epochs):
 
             print(f'=== Epoch: {epoch+1} ===')
-
+            self.start_time = time()
             self.reset()
             self.mode_train()
 
@@ -216,6 +243,9 @@ class Model:
             print('--Validation--')
             if validation:
                 self.validate(X_test, y_test, batch_size, val_steps, epoch)
+                if hasattr(self, 'early_stop_treshold'):
+                    if self.check_early_stop():
+                        break
 
     def save(self, path):
         """Save a checkpoint of the model."""
