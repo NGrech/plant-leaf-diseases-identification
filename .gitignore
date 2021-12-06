@@ -132,6 +132,7 @@ dmypy.json
 data/
 notebooks/testing/fashion_mnist_images/
 notebooks/models/
+notebooks/testing/
 
 # IDE
 .vscode/
