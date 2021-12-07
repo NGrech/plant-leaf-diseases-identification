@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/ngrec/Documents/Learning/Masters/AI%20for%20data%20science/Assignment/plant-leaf-diseases-identification/notebooks/mlruns/8/22eb7b54567b45718731b6247f91543f/artifacts
+end_time: 1638870352563
+entry_point_name: ''
+experiment_id: '8'
+lifecycle_stage: active
+name: ''
+run_id: 22eb7b54567b45718731b6247f91543f
+run_uuid: 22eb7b54567b45718731b6247f91543f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1638828690455
+status: 3
+tags: []
+user_id: ngrec

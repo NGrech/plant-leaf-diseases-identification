@@ -1,0 +1,15 @@
+artifact_uri: ./mlruns/1/1c3aa75f4f234be5b56a0328759c8c87/artifacts
+end_time: 1637662675998
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 1c3aa75f4f234be5b56a0328759c8c87
+run_uuid: 1c3aa75f4f234be5b56a0328759c8c87
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1637662656992
+status: 3
+tags: []
+user_id: ngrec

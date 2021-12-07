@@ -140,5 +140,5 @@ notebooks/testing/fashion_mnist_images.zip
 notebooks/fashion_mnist_images.zip
 notebooks/fashion_mnist_images.zip
 
-# MLflow
-*/mlruns/
+# MLFLOW TRASH
+notebooks/mlruns/.trash
