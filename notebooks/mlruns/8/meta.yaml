@@ -1,0 +1,7 @@
+artifact_location: file:///C:/Users/ngrec/Documents/Learning/Masters/AI%20for%20data%20science/Assignment/plant-leaf-diseases-identification/notebooks/mlruns/8
+experiment_id: '8'
+lifecycle_stage: active
+name: Plant Leaf Disease
+tags:
+  mlflow.note.content: 'In these experiments we used a 90:5:5 split from the results
+    we can see that there was not enough validation data '
