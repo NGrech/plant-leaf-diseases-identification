@@ -61,7 +61,7 @@ class LinearLayer(Module):
         Args:
         inputs (np_array): Inputs to the layer must be the same size as the weights.
         """
-        self.input = inputs
+        self.inputs = inputs
         self.output = np.dot(inputs, self.weights) + self.bias
         return self.output
 
@@ -103,7 +103,7 @@ class LinearLayer(Module):
         Args:
             d_vals (np_array): derivatives from the previous layer/function.
         """
-        self.d_w = np.dot(self.input.T, d_vals) + self.l1_backward_w() + self.l2_backward_w()
+        self.d_w = np.dot(self.inputs.T, d_vals) + self.l1_backward_w() + self.l2_backward_w()
         self.d_b = np.sum(d_vals, axis=0, keepdims=True) + self.l1_backward_b() + self.l2_backward_b()
 
         self.grad = np.dot(d_vals, self.weights.T)
@@ -316,7 +316,7 @@ class ConvolutionLayer(Layer2d):
 
         self.dkernel = np.zeros_like(self.kernel)
 
-        # Calculate the loss-gradient with repect to the kernel weights (dL/dk = dL/dO * dO/dX, dL/dO = dvalues)
+        # Calculate the loss-gradient with respect to the kernel weights (dL/dk = dL/dO * dO/dX, dL/dO = dvalues)
         # => dL/dk = convolution(local inputs, back-propagated derivatives)
         for im, ch_out, ch in it.product(self.r_im, self.r_ch_out, self.r_ch):
             c1 = self.inputs[im, ch, :, :]
@@ -324,7 +324,7 @@ class ConvolutionLayer(Layer2d):
             self.dkernel[ch_out, ch, :, :] = convolve2d(c1, c2, mode='valid')
             self.kernel[ch_out, ch, :, :] -= self.dkernel[ch_out, ch, :, :]
 
-        # Calculate the loss-gradient with repect to the layer inputs (dL/dX = dL/dO * dO/dk, dL/dO = dvalues)
+        # Calculate the loss-gradient with respect to the layer inputs (dL/dX = dL/dO * dO/dk, dL/dO = dvalues)
         # => dL/dX = full-convolution(back-propagated derivatives, local 180-deg rotate filter)
         for im, ch_out, ch in it.product(self.r_im, self.r_ch_out, self.r_ch):
             c1 = dvalues[im, ch_out, :, :]

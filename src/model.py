@@ -8,6 +8,7 @@ from layers import Dropout
 from loss import Accuracy
 from time import time
 from datetime import timedelta
+from utils import one_hot_encode_index
 
 
 class Model:
@@ -162,6 +163,40 @@ class Model:
         print(
             f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
         )
+
+    def validate_with_loader(self, validation_loader, epoch=None, save_model=True, cls_count=2):
+        """Handles the validation pass of the network"""
+        self.mode_eval()
+        self.reset()
+        steps =  len(validation_loader)
+
+        for X, y in validation_loader:
+            y = one_hot_encode_index(y, cls_count)
+
+            self.forward(X)
+
+            self.loss.forward(self.layers[-1].output, y)
+            self.accuracy.forward(self.layers[-1].output, y)
+
+        current_vall_loss = self.loss.get_accumulated_loss()
+
+        if hasattr(self, 'save_path'):
+            if self.val_loss:
+                if self.val_loss > current_vall_loss and save_model:
+                    self.val_loss = current_vall_loss
+                    print('New best model ... saving')
+                    self.save(self.save_path)
+            else:
+                # Not saving first version of model 
+                self.val_loss = current_vall_loss
+
+        if mlflow.active_run():
+            mlflow.log_metric('validation_accuracy', self.accuracy.get_accumulated_accuracy(), step=epoch)
+            mlflow.log_metric('validation_loss', current_vall_loss, step=epoch)
+
+        print(
+            f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
+        )
     
     def evaluate(self, X_val, y_val, batch_size):
         val_steps = self.get_steps(X_val, batch_size)
@@ -246,6 +281,52 @@ class Model:
                 if hasattr(self, 'early_stop_treshold'):
                     if self.check_early_stop():
                         break
+
+    def train_with_loader(self, train_loader, epochs=1, log=True, log_freq=100, validation_loader=None, cls_count=2):
+        """Handles the trining loop."""
+        # Calculating # of steps for each epoch
+        steps = len(train_loader)
+        
+        for epoch in range(epochs):
+
+            print(f'=== Epoch: {epoch+1} ===')
+            self.start_time = time()
+            self.reset()
+            self.mode_train()
+
+            for step, (X, y) in enumerate(train_loader):
+
+
+                y = one_hot_encode_index(y, cls_count)
+                # Forward Pass
+                self.forward(X)
+
+                # Loss 
+                self.current_loss = self.get_loss(self.layers[-1].output, y)
+
+                # accuracy 
+                self.current_accuracy = self.accuracy.forward(self.layers[-1].output, y) 
+                
+                # Backward Pass
+                self.backward(self.layers[-1].output, y)
+
+                # Optimization 
+                self.optim.update(self.trainable_layers)
+
+                # Logging 
+                if log:
+                    if (not (step % log_freq)) or (step == steps-1):
+                        self.step_logger(step, steps)
+
+            self.epoch_logger(epoch, epochs)
+
+            print('--Validation--')
+            if validation_loader:
+                self.validate_with_loader(validation_loader, epoch, cls_count=cls_count)
+                if hasattr(self, 'early_stop_treshold'):
+                    if self.check_early_stop():
+                        break
+
 
     def save(self, path):
         """Save a checkpoint of the model."""
