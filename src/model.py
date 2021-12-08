@@ -4,7 +4,8 @@ import os
 import copy
 import pickle
 import numpy as np
-from layers import Dropout
+from prettytable import PrettyTable
+from layers import Dropout, LinearLayer, ConvolutionLayer
 from loss import Accuracy
 from time import time
 from datetime import timedelta
@@ -65,10 +66,32 @@ class Model:
 
         return False
 
+    def get_parameters_(self):
+        total_params = 0
+        for l in self.layers:
+            if type(l) == LinearLayer:
+                total_params += np.prod(l.weights.shape) + l.bias.shape[1]
+            elif type(l) == ConvolutionLayer:
+                total_params += l.kernel_size**2 * l.channels * l.channels_out
+        return total_params
+
     def __repr__(self) -> str:
         """Custom dunder representer method to print out all the layers of the network."""
-        layer_str = "".join([f"\t ({i}): {type(l).__name__} (Trainable: {l in self.trainable_layers})\n" 
-                            for i, l in enumerate(self.layers)])
+        x = PrettyTable()
+        x.field_names = ['Layer', 'Trainable', 'Parameters']
+        total_params = 0
+        for l in self.layers:
+            if type(l) == LinearLayer:
+                layer_params = np.prod(l.weights.shape) + l.bias.shape[1]
+                x.add_row([type(l).__name__, 'True', layer_params])
+                total_params += layer_params
+            elif type(l) == ConvolutionLayer:
+                layer_params = l.kernel_size**2 * l.channels * l.channels_out
+                x.add_row([type(l).__name__, 'True', layer_params])
+                total_params += layer_params
+            else:
+                x.add_row([type(l).__name__, 'False', '0'])
+        layer_str = str(x) + f'\nTotal: {total_params:,}'
 
         return "Model Architecture: \n" + layer_str
     
