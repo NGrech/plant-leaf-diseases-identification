@@ -187,13 +187,16 @@ class Model:
             f"Validation : Accuracy: {self.accuracy.get_accumulated_accuracy():.3f}, Loss: {self.loss.get_accumulated_loss():.3f}"
         )
 
-    def validate_with_loader(self, validation_loader, epoch=None, save_model=True, cls_count=2):
+    def validate_with_loader(self, validation_loader, epoch=None, save_model=True, cls_count=2, flatten_input=False):
         """Handles the validation pass of the network"""
         self.mode_eval()
         self.reset()
         steps =  len(validation_loader)
 
         for X, y in validation_loader:
+            if flatten_input:
+                    X = X.view(X.shape[0], -1)
+
             y = one_hot_encode_index(y, cls_count)
 
             self.forward(X)
@@ -305,7 +308,7 @@ class Model:
                     if self.check_early_stop():
                         break
 
-    def train_with_loader(self, train_loader, epochs=1, log=True, log_freq=100, validation_loader=None, cls_count=2):
+    def train_with_loader(self, train_loader, epochs=1, log=True, log_freq=100, validation_loader=None, cls_count=2, flatten_input=False):
         """Handles the trining loop."""
         # Calculating # of steps for each epoch
         steps = len(train_loader)
@@ -319,6 +322,8 @@ class Model:
 
             for step, (X, y) in enumerate(train_loader):
 
+                if flatten_input:
+                    X = X.view(X.shape[0], -1)
 
                 y = one_hot_encode_index(y, cls_count)
                 # Forward Pass
@@ -345,7 +350,7 @@ class Model:
 
             print('--Validation--')
             if validation_loader:
-                self.validate_with_loader(validation_loader, epoch, cls_count=cls_count)
+                self.validate_with_loader(validation_loader, epoch, cls_count=cls_count, flatten_input=flatten_input)
                 if hasattr(self, 'early_stop_treshold'):
                     if self.check_early_stop():
                         break
