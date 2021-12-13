@@ -233,6 +233,7 @@ class Layer2d(Module):
         self.channels = channels
         self.kernel_size = kernel_size
 
+        # Iterator for channels 
         self.r_ch = range(self.channels)
 
         self.kernels = 1
@@ -339,8 +340,8 @@ class ConvolutionLayer(Layer2d):
 
     def __convolve2d(self, pad=0, strides=1):
 
-        ER = self.inputs.shape[2]
-        EC = self.inputs.shape[3]
+        ER = self.inputs.shape[2] # height
+        EC = self.inputs.shape[3] # width 
 
         k_ER = self.kernel.shape[2]
         k_EC = self.kernel.shape[3]
